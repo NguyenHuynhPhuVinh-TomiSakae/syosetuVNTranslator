@@ -31,7 +31,7 @@ export default function Home() {
       </main>
 
       <footer className="w-full text-center text-sm text-gray-600 dark:text-gray-400">
-        <p>© 2023 SyosetuVNTranslator - Công cụ dịch tiểu thuyết</p>
+        <p>© {new Date().getFullYear()} SyosetuVNTranslator - Công cụ dịch tiểu thuyết</p>
       </footer>
     </div>
   );
