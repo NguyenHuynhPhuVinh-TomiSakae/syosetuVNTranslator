@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   GoogleGenerativeAI,
   HarmCategory,
@@ -31,40 +32,54 @@ const generationConfig = {
   responseMimeType: "text/plain",
 };
 
-// Hàm khởi tạo Gemini với API key
-export async function initGemini() {
+const safetySettings = [
+  {
+    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+];
+
+export async function initGemini(): Promise<boolean> {
   try {
-    const response = await fetch('/api/gemini-key');
-    const data = await response.json();
+    // Thử lấy API key từ localStorage trước
+    const savedApiKey = localStorage.getItem('gemini_api_key');
     
-    if (data.error) {
-      throw new Error(data.error);
+    if (savedApiKey) {
+      apiKey = savedApiKey;
+    } else {
+      // Nếu không có trong localStorage, thử lấy từ server
+      const response = await fetch('/api/gemini-key');
+      const data = await response.json();
+      
+      if (data.error) {
+        console.error("Lỗi khi lấy API key:", data.error);
+        return false;
+      }
+      
+      apiKey = data.apiKey;
+      
+      // Lưu API key vào localStorage để sử dụng sau này
+      localStorage.setItem('gemini_api_key', apiKey);
     }
     
-    apiKey = data.apiKey;
+    // Khởi tạo Gemini với API key
     genAI = new GoogleGenerativeAI(apiKey);
-    
     model = genAI.getGenerativeModel({
       model: "gemini-2.0-flash",
-      systemInstruction: systemPrompt,
-      safetySettings: [
-        {
-          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-          threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-          threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-          threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-          threshold: HarmBlockThreshold.BLOCK_NONE,
-        },
-      ],
+      generationConfig,
+      safetySettings,
     });
     
     return true;
@@ -74,31 +89,37 @@ export async function initGemini() {
   }
 }
 
-async function translateText(text: string): Promise<string> {
+export async function translateTextStream(text: string): Promise<GenerateContentStreamResult> {
   if (!model) {
-    await initGemini();
+    throw new Error("Gemini chưa được khởi tạo");
   }
   
-  const chatSession: ChatSession = model.startChat({
-    generationConfig,
-    history: [],
+  const chat = model.startChat({
+    history: [
+      {
+        role: "user",
+        parts: [{ text: systemPrompt }],
+      },
+      {
+        role: "model",
+        parts: [{ text: "Tôi sẽ dịch văn bản từ tiếng Nhật sang tiếng Việt theo yêu cầu của bạn." }],
+      },
+    ],
   });
-
-  const result = await chatSession.sendMessage(text);
-  return result.response.text();
-}
-
-async function translateTextStream(text: string): Promise<GenerateContentStreamResult> {
-  if (!model) {
-    await initGemini();
-  }
   
-  const chatSession: ChatSession = model.startChat({
-    generationConfig,
-    history: [],
-  });
-
-  return chatSession.sendMessageStream(text);
+  return chat.sendMessageStream(text);
 }
 
-export { translateText, translateTextStream }; 
+// Thêm hàm để người dùng có thể cập nhật API key
+export function updateApiKey(newApiKey: string): void {
+  apiKey = newApiKey;
+  localStorage.setItem('gemini_api_key', apiKey);
+  
+  // Khởi tạo lại Gemini với API key mới
+  genAI = new GoogleGenerativeAI(apiKey);
+  model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash",
+    generationConfig,
+    safetySettings,
+  });
+} 
