@@ -6,6 +6,7 @@ import ChapterManager from './ChapterManager';
 import ExportImportManager from './ExportImportManager';
 import NovelStatistics from './NovelStatistics';
 import GlossaryManager from './GlossaryManager';
+import ExportToPDF from './ExportToPDF';
 
 const Dashboard: React.FC = () => {
   const { currentNovel } = useNovel();
@@ -44,22 +45,21 @@ const Dashboard: React.FC = () => {
         </div>
       )}
       
-      <div className="space-y-6">
-        <NovelManager />
-        
-        {currentNovel && activeTab === 'overview' && (
-          <>
-            <NovelStatistics />
-            <ChapterManager />
-          </>
-        )}
-        
-        {currentNovel && activeTab === 'glossary' && (
-          <GlossaryManager />
-        )}
-        
-        <ExportImportManager />
-      </div>
+      <NovelManager />
+      
+      {currentNovel && activeTab === 'overview' && (
+        <>
+          <NovelStatistics />
+          <ChapterManager />
+          <ExportToPDF />
+        </>
+      )}
+      
+      {currentNovel && activeTab === 'glossary' && (
+        <GlossaryManager />
+      )}
+      
+      <ExportImportManager />
     </div>
   );
 };
