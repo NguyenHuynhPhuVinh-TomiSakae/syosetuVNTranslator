@@ -150,4 +150,38 @@ export function updateApiKey(newApiKey: string): void {
     safetySettings,
     systemInstruction: systemPrompt,
   });
+}
+
+// Hàm phân tích cấu trúc ngữ pháp và giải thích dịch
+export async function analyzeGrammarStream(
+  text: string
+): Promise<GenerateContentStreamResult> {
+  // Kiểm tra và khởi tạo Gemini nếu chưa được khởi tạo
+  if (!genAI || !model) {
+    const initialized = await initGemini();
+    if (!initialized) {
+      throw new Error("Không thể khởi tạo Gemini");
+    }
+  }
+
+  // Tạo model phân tích riêng biệt
+  const analyzeModel = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash",
+    generationConfig,
+    safetySettings,
+  });
+
+  // Tạo prompt phân tích ngữ pháp
+  const analyzePrompt = `Phân tích cấu trúc ngữ pháp và giải thích cách dịch dòng text tiếng Nhật sau đây sang tiếng Việt:
+"${text}"
+
+1. Cấu trúc ngữ pháp: (Phân tích cấu trúc ngữ pháp, chỉ ra các thành phần chính của câu, đánh dấu các trợ từ, trạng ngữ, từ nối, v.v.)
+2. Giải thích dịch: (Giải thích cách dịch, lưu ý về từ vựng đặc biệt, cách chuyển ngữ phù hợp với văn cảnh, v.v.)
+
+Trả lời theo định dạng:
+GRAMMAR: <phân tích cấu trúc ngữ pháp>
+EXPLANATION: <giải thích dịch>`;
+
+  // Gửi yêu cầu phân tích và trả về kết quả dạng stream
+  return analyzeModel.generateContentStream(analyzePrompt);
 } 
