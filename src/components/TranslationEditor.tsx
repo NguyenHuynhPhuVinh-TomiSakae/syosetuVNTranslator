@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useNovel } from '@/contexts/NovelContext';
 import { translateTextStream, analyzeGrammarStream } from '@/lib/gemini';
 import { updateChapter, getChaptersForNovel, getGlossaryForNovel } from '@/lib/db';
-import { toast } from 'sonner';
+import { toast, Toaster } from 'sonner';
 
 interface TranslationEditorProps {
   isInitialized: boolean;
@@ -593,6 +593,7 @@ Yêu cầu:
 
   return (
     <div className="flex-1 p-6 overflow-y-auto">
+      <Toaster richColors position="top-right" />
       <div className="mb-4">
         <h2 className="text-xl font-bold">{currentChapter.title}</h2>
         
