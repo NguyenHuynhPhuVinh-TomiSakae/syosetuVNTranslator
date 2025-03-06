@@ -18,6 +18,7 @@ export default function Home() {
   const [initError, setInitError] = useState("");
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   const [activeView, setActiveView] = useState<'dashboard' | 'editor' | 'reader'>('dashboard');
+  const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Khởi tạo Gemini khi trang được tải
   useEffect(() => {
@@ -41,7 +42,7 @@ export default function Home() {
 
   // Cuộn lên đầu trang khi chuyển đổi chế độ xem
   useEffect(() => {
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeView]);
 
   const handleApiKeySuccess = async () => {
@@ -59,31 +60,49 @@ export default function Home() {
     }
   };
 
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!isSidebarCollapsed);
+  };
+
   return (
     <NovelProvider>
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col min-h-screen bg-gray-50">
         <Header 
           initError={initError} 
           onApiKeyClick={() => setIsApiKeyModalOpen(true)}
           activeView={activeView}
           setActiveView={setActiveView}
+          onToggleSidebar={toggleSidebar}
+          isSidebarCollapsed={isSidebarCollapsed}
         />
         
         <div className="flex flex-1 overflow-hidden">
-          {activeView !== 'reader' && <Sidebar />}
+          {activeView !== 'reader' && (
+            <div className={`transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'w-16' : 'w-64'}`}>
+              <Sidebar isCollapsed={isSidebarCollapsed} />
+            </div>
+          )}
           
-          <div className={`flex-1 ${activeView === 'reader' ? 'overflow-y-auto' : 'flex flex-col overflow-hidden'} ml-64`}>
+          <div 
+            className={`flex-1 transition-all duration-300 ease-in-out ${
+              activeView === 'reader' 
+                ? 'overflow-y-auto px-4 md:px-8' 
+                : 'flex flex-col overflow-hidden'
+            } ${activeView !== 'reader' && !isSidebarCollapsed ? 'ml-0' : ''}`}
+          >
             {activeView !== 'reader' && <NovelDetails />}
             
-            {activeView === 'dashboard' && (
-              <Dashboard />
-            )}
-            {activeView === 'editor' && (
-              <TranslationEditor isInitialized={isInitialized} />
-            )}
-            {activeView === 'reader' && (
-              <Reader />
-            )}
+            <div className="p-4 transition-opacity duration-300 ease-in-out">
+              {activeView === 'dashboard' && (
+                <Dashboard />
+              )}
+              {activeView === 'editor' && (
+                <TranslationEditor isInitialized={isInitialized} />
+              )}
+              {activeView === 'reader' && (
+                <Reader />
+              )}
+            </div>
           </div>
         </div>
         
