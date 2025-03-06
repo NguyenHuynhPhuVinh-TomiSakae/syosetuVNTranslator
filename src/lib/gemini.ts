@@ -12,6 +12,7 @@ let apiKey = "";
 let genAI: GoogleGenerativeAI;
 let model: GenerativeModel;
 
+// Định nghĩa system prompt
 const systemPrompt = `Bạn là một dịch giả chuyên nghiệp, chuyên dịch tiểu thuyết Nhật Bản (từ trang Syosetu) sang tiếng Việt. Hãy tuân thủ các nguyên tắc sau:
 
 1. Dịch chính xác nội dung gốc, giữ nguyên ý nghĩa và cảm xúc của tác giả.
@@ -21,6 +22,7 @@ const systemPrompt = `Bạn là một dịch giả chuyên nghiệp, chuyên d�
 5. Duy trì cấu trúc đoạn văn và định dạng của bản gốc.
 6. Đảm bảo tính nhất quán trong việc sử dụng thuật ngữ và phong cách dịch.
 7. Chỉ trả về bản dịch tiếng Việt, không thêm bất kỳ giải thích hay bình luận nào.
+8. Khi được cung cấp các chương trước đó, hãy đảm bảo tính nhất quán trong cách dịch tên nhân vật, thuật ngữ và phong cách.
 
 Hãy dịch văn bản được cung cấp sang tiếng Việt một cách tự nhiên và chuyên nghiệp.`;
 
@@ -32,6 +34,7 @@ const generationConfig = {
   responseMimeType: "text/plain",
 };
 
+// Cấu hình an toàn
 const safetySettings = [
   {
     category: HarmCategory.HARM_CATEGORY_HARASSMENT,
@@ -80,8 +83,9 @@ export async function initGemini(): Promise<boolean> {
       model: "gemini-2.0-flash",
       generationConfig,
       safetySettings,
+      systemInstruction: systemPrompt,
     });
-    
+
     return true;
   } catch (error) {
     console.error("Lỗi khi khởi tạo Gemini:", error);
@@ -89,25 +93,48 @@ export async function initGemini(): Promise<boolean> {
   }
 }
 
-export async function translateTextStream(text: string): Promise<GenerateContentStreamResult> {
+// Hàm dịch văn bản với stream
+export async function translateTextStream(
+  text: string, 
+  previousChapters: { title: string, content: string }[] = [],
+  glossaryTerms: { original: string, translated: string, description?: string }[] = []
+): Promise<GenerateContentStreamResult> {
   if (!model) {
     throw new Error("Gemini chưa được khởi tạo");
   }
+
+  // Tạo chat session mới với systemInstruction đã được cấu hình
+  const chat = model.startChat();
   
-  const chat = model.startChat({
-    history: [
-      {
-        role: "user",
-        parts: [{ text: systemPrompt }],
-      },
-      {
-        role: "model",
-        parts: [{ text: "Tôi sẽ dịch văn bản từ tiếng Nhật sang tiếng Việt theo yêu cầu của bạn." }],
-      },
-    ],
-  });
+  // Xây dựng context từ thuật ngữ và chương trước
+  let contextPrompt = "";
   
-  return chat.sendMessageStream(text);
+  // Thêm thuật ngữ nếu có
+  if (glossaryTerms.length > 0) {
+    contextPrompt += "Dưới đây là danh sách thuật ngữ cần tuân thủ khi dịch:\n\n";
+    contextPrompt += "| Thuật ngữ gốc | Thuật ngữ dịch | Mô tả |\n";
+    contextPrompt += "|--------------|--------------|-------|\n";
+    
+    for (const term of glossaryTerms) {
+      contextPrompt += `| ${term.original} | ${term.translated} | ${term.description || ''} |\n`;
+    }
+    
+    contextPrompt += "\nHãy đảm bảo sử dụng đúng các thuật ngữ trên trong bản dịch.\n\n";
+  }
+  
+  // Thêm các chương trước đó vào chat history
+  if (previousChapters.length > 0) {
+    // Giới hạn số lượng chương trước đó để tránh vượt quá token limit
+    const limitedChapters = previousChapters.slice(-2);
+    
+    for (const chapter of limitedChapters) {
+      await chat.sendMessage(`### ${chapter.title} ###\n${chapter.content}`);
+      await chat.sendMessage("Tôi đã ghi nhớ phong cách và thuật ngữ từ chương này.");
+    }
+  }
+  
+  // Gửi văn bản cần dịch với context
+  return chat.sendMessageStream(contextPrompt + text);
 }
 
 // Thêm hàm để người dùng có thể cập nhật API key
@@ -121,5 +148,6 @@ export function updateApiKey(newApiKey: string): void {
     model: "gemini-2.0-flash",
     generationConfig,
     safetySettings,
+    systemInstruction: systemPrompt,
   });
 } 
