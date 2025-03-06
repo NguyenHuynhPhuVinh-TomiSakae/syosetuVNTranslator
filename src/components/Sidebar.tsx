@@ -51,7 +51,7 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <aside className="w-64 h-screen bg-gray-100 p-4 overflow-y-auto border-r border-gray-200">
+    <aside className="fixed top-16 left-0 w-64 h-[calc(100vh-4rem)] bg-gray-100 p-4 overflow-y-auto border-r border-gray-200">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">Truyện của tôi</h2>
         <button

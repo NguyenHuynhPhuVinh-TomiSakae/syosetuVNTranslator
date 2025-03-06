@@ -72,7 +72,7 @@ export default function Home() {
         <div className="flex flex-1 overflow-hidden">
           {activeView !== 'reader' && <Sidebar />}
           
-          <div className={`flex-1 ${activeView === 'reader' ? 'overflow-y-auto' : 'flex flex-col overflow-hidden'}`}>
+          <div className={`flex-1 ${activeView === 'reader' ? 'overflow-y-auto' : 'flex flex-col overflow-hidden'} ml-64`}>
             {activeView !== 'reader' && <NovelDetails />}
             
             {activeView === 'dashboard' && (
