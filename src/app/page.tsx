@@ -1,38 +1,119 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+"use client";
+
+import { useState, useEffect } from "react";
+import { initGemini } from "@/lib/gemini";
+import Header from "@/components/Header";
+import Sidebar from "@/components/Sidebar";
+import NovelDetails from "@/components/NovelDetails";
+import TranslationEditor from "@/components/TranslationEditor";
+import Dashboard from "@/components/Dashboard";
+import Reader from "@/components/Reader";
+import Footer from "@/components/Footer";
+import ApiKeyModal from "@/components/ApiKeyModal";
+import { NovelProvider } from "@/contexts/NovelContext";
+
 export default function Home() {
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [initError, setInitError] = useState("");
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+  const [activeView, setActiveView] = useState<'dashboard' | 'editor' | 'reader'>('dashboard');
+  const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Khởi tạo Gemini khi trang được tải
+  useEffect(() => {
+    async function initialize() {
+      try {
+        const success = await initGemini();
+        setIsInitialized(success);
+        if (!success) {
+          setInitError("Không thể khởi tạo dịch vụ. Vui lòng cung cấp API key.");
+          setIsApiKeyModalOpen(true);
+        }
+      } catch (error) {
+        console.error("Lỗi khi khởi tạo:", error);
+        setInitError("Đã xảy ra lỗi khi khởi tạo dịch vụ. Vui lòng thử lại sau.");
+        setIsApiKeyModalOpen(true);
+      }
+    }
+    
+    initialize();
+  }, []);
+
+  // Cuộn lên đầu trang khi chuyển đổi chế độ xem
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeView]);
+
+  const handleApiKeySuccess = async () => {
+    try {
+      const success = await initGemini();
+      setIsInitialized(success);
+      if (success) {
+        setInitError("");
+      } else {
+        setInitError("API key không hợp lệ. Vui lòng thử lại.");
+      }
+    } catch (error) {
+      console.error("Lỗi khi khởi tạo với API key mới:", error);
+      setInitError("Đã xảy ra lỗi khi khởi tạo với API key mới.");
+    }
+  };
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!isSidebarCollapsed);
+  };
+
   return (
-    <div className="grid grid-rows-[auto_1fr_auto] items-center justify-items-center min-h-screen p-8 pb-20 gap-8 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <header className="w-full text-center">
-        <h1 className="text-3xl font-bold mb-4">SyosetuVNTranslator</h1>
-        <p className="text-gray-600 dark:text-gray-400">Công cụ dịch tiểu thuyết từ Syosetu sang tiếng Việt</p>
-      </header>
-      
-      <main className="w-full max-w-4xl flex flex-col gap-6">
-        <div className="w-full">
-          <label htmlFor="sourceText" className="block mb-2 font-medium">Nội dung cần dịch:</label>
-          <textarea 
-            id="sourceText" 
-            className="w-full h-64 p-4 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white" 
-            placeholder="Dán đoạn tiểu thuyết cần dịch vào đây..."
-          />
-        </div>
+    <NovelProvider>
+      <div className="flex flex-col min-h-screen bg-gray-50">
+        <Header 
+          initError={initError} 
+          onApiKeyClick={() => setIsApiKeyModalOpen(true)}
+          activeView={activeView}
+          setActiveView={setActiveView}
+          onToggleSidebar={toggleSidebar}
+          isSidebarCollapsed={isSidebarCollapsed}
+        />
         
-        <div className="flex justify-center">
-          <button className="px-6 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors">
-            Dịch ngay
-          </button>
-        </div>
-        
-        <div className="w-full">
-          <label htmlFor="translatedText" className="block mb-2 font-medium">Bản dịch:</label>
-          <div id="translatedText" className="w-full min-h-32 p-4 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-800 dark:text-white">
-            Bản dịch sẽ xuất hiện ở đây...
+        <div className="flex flex-1 overflow-hidden">
+          {activeView !== 'reader' && (
+            <div className={`transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'w-16' : 'w-64'}`}>
+              <Sidebar isCollapsed={isSidebarCollapsed} />
+            </div>
+          )}
+          
+          <div 
+            className={`flex-1 transition-all duration-300 ease-in-out ${
+              activeView === 'reader' 
+                ? 'overflow-y-auto px-4 md:px-8' 
+                : 'flex flex-col overflow-hidden'
+            } ${activeView !== 'reader' && !isSidebarCollapsed ? 'ml-0' : ''}`}
+          >
+            {activeView !== 'reader' && <NovelDetails />}
+            
+            <div className="p-4 transition-opacity duration-300 ease-in-out">
+              {activeView === 'dashboard' && (
+                <Dashboard />
+              )}
+              {activeView === 'editor' && (
+                <TranslationEditor isInitialized={isInitialized} />
+              )}
+              {activeView === 'reader' && (
+                <Reader />
+              )}
+            </div>
           </div>
         </div>
-      </main>
-
-      <footer className="w-full text-center text-sm text-gray-600 dark:text-gray-400">
-        <p>© 2023 SyosetuVNTranslator - Công cụ dịch tiểu thuyết</p>
-      </footer>
-    </div>
+        
+        <Footer />
+        
+        <ApiKeyModal 
+          isOpen={isApiKeyModalOpen}
+          onClose={() => setIsApiKeyModalOpen(false)}
+          onSuccess={handleApiKeySuccess}
+        />
+      </div>
+    </NovelProvider>
   );
 }
